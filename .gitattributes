@@ -1,8 +1,8 @@
-# Keep language statistics focused on source code.
+#语言统计反映源码
 force-system/docs/** linguist-documentation
 force-system/docs/report.html linguist-generated
 force-system/docs/*.svg linguist-generated
 
-# Output files produced by the Python program.
+#标记：程序自动生成的文件
 force-system/examples/cube_output.* linguist-generated
 force-system/examples/cube_result.* linguist-generated
