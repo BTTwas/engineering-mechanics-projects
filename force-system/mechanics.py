@@ -79,7 +79,7 @@ class Force:
             raise ValueError("方向向量不能为零")
         if not math.isfinite(length):
             raise ValueError("方向向量量级过大，请缩小方向分量")
-        # 先归一化再乘大小，方向分量表示比例，不要求用户先算单位向量。
+        # 此方法为先归一化再乘大小，方向分量表示比例，不要求使用者先算单位向量，
         components = tuple(magnitude * (x / length) for x in direction)
         return cls(point, components, name)
 
