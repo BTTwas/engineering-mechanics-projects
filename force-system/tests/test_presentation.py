@@ -56,6 +56,16 @@ class ImageTests(unittest.TestCase):
                 export_result(path, forces, result, couples)
                 self.assertTrue(ET.parse(path).getroot().tag.endswith("svg"))
 
+    def test_export_uses_selected_views(self):
+        forces = [Force((1, 0, 0), (0, 1, 0))]
+        result = reduce_system(forces)
+        views = [(40, 75, 0), (18, -120, 10)]
+        figure = result_figure(forces, result, views=views)
+        for ax, view in zip(figure.axes, views):
+            for actual, expected in zip((ax.elev, ax.azim, ax.roll), view):
+                self.assertAlmostEqual(actual, expected)
+        figure.clear()
+
     def test_cube_png_has_print_resolution(self):
         data = json.loads((HERE/"examples"/"cube.json").read_text(encoding="utf-8"))
         forces, origin, couples = load_case(data)

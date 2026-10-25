@@ -1,7 +1,6 @@
 """简洁桌面界面：载荷输入、结果图和可展开的运行细节。"""
 
 import json
-import math
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -16,38 +15,51 @@ from mechanics import Force, KINDS, load_case, reduce_system, format_result, nor
 from numbers_input import number
 
 HERE = Path(__file__).resolve().parent
-BG = "#f3f6f3"
-WHITE = "#ffffff"
-INK = "#233f39"
-MUTED = "#82928a"
-GREEN = "#357e69"
-SOFT = "#eaf2eb"
-BORDER = "#e1e9e2"
-FONT = "Microsoft YaHei UI"
+from theme import (BACKGROUND as BG, SURFACE as WHITE, INK, SECONDARY as MUTED,
+                   BLUE, BLUE_DARK, SOFT, BORDER, FIELD, LOAD_CARD, DETAILS,
+                   WARNING, ERROR, FONT, SIZES)
 
 
 def label(parent, text="", size=10, color=INK, bold=False, **kwargs):
     return tk.Label(parent, text=text, bg=parent.cget("bg"), fg=color,
-                    font=(FONT, size, "bold" if bold else "normal"), **kwargs)
+                    font=(FONT, SIZES.get(size, size), "bold" if bold else "normal"), **kwargs)
 
 
 def button(parent, text, command, *, primary=False, small=False):
-    bg, fg = (GREEN, WHITE) if primary else (WHITE, INK)
+    bg, fg = (BLUE, WHITE) if primary else (WHITE, INK)
     result = tk.Button(parent, text=text, command=command, bg=bg, fg=fg,
-                       activebackground="#2b6a58" if primary else SOFT,
+                       activebackground=BLUE_DARK if primary else SOFT,
                        activeforeground=WHITE if primary else INK,
-                       font=(FONT, 9 if small else 10), relief="flat",
+                       font=(FONT, 10 if small else 11), relief="flat",
                        borderwidth=0, cursor="hand2", padx=12, pady=7,
                        highlightthickness=0, takefocus=True)
     return result
 
 
 def field(parent, variable, width=8):
-    box = tk.Frame(parent, bg="#f8faf8", highlightbackground=BORDER, highlightthickness=1)
-    entry = tk.Entry(box, textvariable=variable, bg="#f8faf8", fg=INK,
-                     insertbackground=GREEN, font=(FONT, 10), relief="flat", width=width)
+    box = tk.Frame(parent, bg=FIELD, highlightbackground=BORDER, highlightcolor=BLUE, highlightthickness=1)
+    entry = tk.Entry(box, textvariable=variable, bg=FIELD, fg=INK,
+                     insertbackground=BLUE, font=(FONT, 12), relief="flat", width=width)
     entry.pack(fill="both", expand=True, padx=9, pady=8)
+    box.bind("<Enter>", lambda e: box.configure(highlightbackground=BLUE))
+    box.bind("<Leave>", lambda e: box.configure(highlightbackground=BORDER))
+    entry.bind("<FocusIn>", lambda e: box.configure(highlightbackground=BLUE))
+    entry.bind("<FocusOut>", lambda e: box.configure(highlightbackground=BORDER))
+    def select_all(event):
+        entry.select_range(0, "end")
+        entry.icursor("end")
+        return "break"
+    entry.bind("<Control-a>", select_all)
     return box, entry
+
+
+def next_load_name(items, couple=False):
+    prefix = "C" if couple else "F"
+    used = {row["name"] for row in items}
+    i = 1
+    while f"{prefix}{i}" in used:
+        i += 1
+    return f"{prefix}{i}"
 
 
 class LoadDialog(tk.Toplevel):
@@ -61,7 +73,7 @@ class LoadDialog(tk.Toplevel):
         self.resizable(False, False)
         self.transient(app.root)
         self.grab_set()
-        self.name = tk.StringVar(value=("C" if couple else "F")+str(len(app.items)+1))
+        self.name = tk.StringVar(value=next_load_name(app.items, couple))
         self.mode = tk.StringVar(value="大小与方向")
         self.magnitude = tk.StringVar(value="1")
         self.point = [tk.StringVar(value="0") for _ in range(3)]
@@ -77,6 +89,7 @@ class LoadDialog(tk.Toplevel):
                 for v, x in zip(self.point, f.point):
                     v.set(f"{x:.12g}")
                 values = f.components
+                self.magnitude.set(f"{norm(f.components):.12g}")
                 self.mode.set("分量")
             for v, x in zip(self.direction, values):
                 v.set(f"{x:.12g}")
@@ -96,7 +109,7 @@ class LoadDialog(tk.Toplevel):
                 tk.Radiobutton(mode_bar, text=mode, value=mode, variable=self.mode,
                                command=self.update_mode, bg=WHITE, fg=INK,
                                activebackground=WHITE, selectcolor=SOFT,
-                               font=(FONT, 10)).pack(side="left", padx=(0, 18))
+                               font=(FONT, 11)).pack(side="left", padx=(0, 18))
             label(shell, "作用点 / m", color=MUTED).pack(anchor="w")
             self.triplet(shell, self.point)
             self.mag_frame = tk.Frame(shell, bg=WHITE)
@@ -110,7 +123,7 @@ class LoadDialog(tk.Toplevel):
         self.hint = label(shell, "支持 √2、sqrt(2)、1/6；方向向量不必归一化。",
                           size=9, color=MUTED)
         self.hint.pack(anchor="w", pady=(0, 8))
-        self.error = label(shell, "", size=9, color="#b26d58", wraplength=390, justify="left")
+        self.error = label(shell, "", size=9, color=ERROR, wraplength=390, justify="left")
         self.error.pack(anchor="w", pady=(0, 12))
         actions = tk.Frame(shell, bg=WHITE)
         actions.pack(fill="x")
@@ -120,7 +133,10 @@ class LoadDialog(tk.Toplevel):
         self.bind("<Return>", lambda e: self.save())
         self.update_mode()
         self.update_idletasks()
-        self.geometry(f"470x{self.winfo_reqheight()}+{app.root.winfo_rootx()+90}+{app.root.winfo_rooty()+80}")
+        dialog_height = min(self.winfo_reqheight(), self.winfo_screenheight()-90)
+        left = max(20, min(app.root.winfo_rootx()+70, self.winfo_screenwidth()-540))
+        top = max(20, min(app.root.winfo_rooty()+40, self.winfo_screenheight()-dialog_height-60))
+        self.geometry(f"510x{dialog_height}+{left}+{top}")
 
     def triplet(self, parent, variables):
         row = tk.Frame(parent, bg=WHITE)
@@ -169,17 +185,21 @@ class App:
         self.drawer_open = False
         self.origin = [tk.StringVar(value="0") for _ in range(3)]
         root.title("力系计算 · 工程力学")
-        root.geometry("1380x900")
-        root.minsize(1160, 790)
+        window_width = min(1380, root.winfo_screenwidth()-70)
+        window_height = min(930, root.winfo_screenheight()-100)
+        root.geometry(f"{window_width}x{window_height}")
+        root.minsize(min(1160, window_width), min(780, window_height))
+        self.closed_geometry = None
+        self.closed_minsize = None
         root.configure(bg=BG)
         style = ttk.Style(root)
         style.theme_use("clam")
         style.configure("Vertical.TScrollbar", background=BORDER, troughcolor=WHITE,
-                        bordercolor=WHITE, arrowcolor=MUTED, width=9)
+                        bordercolor=WHITE, arrowcolor=MUTED, width=11)
 
         header = tk.Frame(root, bg=WHITE, padx=26, pady=17)
         header.pack(fill="x")
-        mark = tk.Label(header, text="R", bg=SOFT, fg=GREEN, font=("Georgia", 25, "italic"),
+        mark = tk.Label(header, text="R", bg=SOFT, fg=BLUE, font=("Georgia", 25, "italic"),
                         padx=15, pady=2)
         mark.pack(side="left", padx=(0, 14))
         heading = tk.Frame(header, bg=WHITE)
@@ -196,14 +216,15 @@ class App:
         self.body.columnconfigure(1, weight=1, minsize=610)
         self.body.rowconfigure(0, weight=1)
 
-        sidebar = tk.Frame(self.body, bg=WHITE, width=300, highlightbackground=BORDER,
+        sidebar = tk.Frame(self.body, bg=WHITE, width=340, highlightbackground=BORDER,
                            highlightthickness=1)
         sidebar.grid(row=0, column=0, sticky="nsew", padx=(0, 18))
+        sidebar.pack_propagate(False)
         sidebar.grid_propagate(False)
         inside = tk.Frame(sidebar, bg=WHITE, padx=20, pady=20)
         inside.pack(fill="both", expand=True)
         label(inside, "载荷输入", 15, bold=True).pack(anchor="w")
-        label(inside, "长度 m · 力 N · 力矩 N·m", 9, MUTED).pack(anchor="w", pady=(5, 21))
+        label(inside, "长度 m · 力 N · 力矩 N·m", 10, MUTED).pack(anchor="w", pady=(5, 16))
         line = tk.Frame(inside, bg=WHITE)
         line.pack(fill="x", pady=(0, 10))
         self.count = label(line, "作用力", 10, MUTED)
@@ -289,33 +310,54 @@ class App:
               8, MUTED).grid(row=2, column=0, sticky="w", pady=(3, 0))
         final = tk.Frame(self.main, bg=SOFT, padx=19, pady=16)
         final.grid(row=3, column=0, sticky="ew")
-        self.kind_label = label(final, "最终简化", 14, GREEN, True)
+        final.bind("<Configure>", self.resize_result_text)
+        self.kind_label = label(final, "最终简化", 14, BLUE, True)
         self.kind_label.pack(anchor="w")
         self.axis_label = label(final, "", 10, wraplength=700, justify="left")
         self.axis_label.pack(anchor="w", pady=(7, 0))
-        self.couple_label = label(final, "", 10, wraplength=700, justify="left", color=GREEN)
+        self.couple_label = label(final, "", 10, wraplength=700, justify="left", color=BLUE)
         self.couple_label.pack(anchor="w", pady=(5, 0))
 
-        self.drawer = tk.Frame(self.body, bg="#edf2ed", width=310, padx=18, pady=20,
+        self.drawer = tk.Frame(self.body, bg=DETAILS, width=330, padx=18, pady=20,
                                highlightbackground=BORDER, highlightthickness=1)
+        self.drawer.pack_propagate(False)
         self.drawer.grid_propagate(False)
-        label(self.drawer, "运行细节", 15, bold=True).pack(anchor="w")
-        label(self.drawer, "输入 → 分解 → 求和 → 简化", 9, MUTED).pack(anchor="w", pady=(6, 15))
-        self.log = tk.Text(self.drawer, bg="#edf2ed", fg="#526b60", relief="flat",
-                           font=(FONT, 9), wrap="word", padx=0, pady=0, spacing3=5)
-        self.log.pack(fill="both", expand=True)
+        drawer_header = tk.Frame(self.drawer, bg=DETAILS)
+        drawer_header.pack(fill="x")
+        label(drawer_header, "计算过程", 15, bold=True).pack(side="left")
+        button(drawer_header, "收起", self.toggle_details, small=True).pack(side="right")
+        label(self.drawer, "各力分解、力矩与最终简化", 9, MUTED).pack(anchor="w", pady=(6, 15))
+        log_area = tk.Frame(self.drawer, bg=DETAILS)
+        log_area.pack(fill="both", expand=True)
+        self.log = tk.Text(log_area, bg=DETAILS, fg=MUTED, relief="flat",
+                           font=(FONT, 11), wrap="word", padx=0, pady=0, spacing3=6)
+        self.log_scroll = ttk.Scrollbar(log_area, command=self.log.yview)
+        self.log.configure(yscrollcommand=self.log_scroll.set)
+        self.log_scroll.pack(side="right", fill="y")
+        self.log.pack(side="left", fill="both", expand=True)
         self.log.configure(state="disabled")
+        root.bind("<Control-Return>", lambda e: self.calculate())
+        root.bind("<Control-o>", lambda e: self.open_case())
+        root.bind("<Control-s>", lambda e: self.save_case())
         self.example()
+
+    def resize_result_text(self, event):
+        width = max(220, event.width-40)
+        self.axis_label.configure(wraplength=width)
+        self.couple_label.configure(wraplength=width)
 
     def scroll_loads(self, event):
         self.load_canvas.yview_scroll(-int(event.delta/120), "units")
         return "break"
 
     def add_menu(self):
-        menu = tk.Menu(self.root, tearoff=0, font=(FONT, 10), bg=WHITE, fg=INK)
+        menu = tk.Menu(self.root, tearoff=0, font=(FONT, 11), bg=WHITE, fg=INK)
         menu.add_command(label="添加作用力", command=lambda: LoadDialog(self))
         menu.add_command(label="添加独立力偶", command=lambda: LoadDialog(self, couple=True))
-        menu.tk_popup(self.add_button.winfo_rootx(), self.add_button.winfo_rooty()+35)
+        try:
+            menu.tk_popup(self.add_button.winfo_rootx(), self.add_button.winfo_rooty()+35)
+        finally:
+            menu.grab_release()
 
     def apply_load(self, row, index=None):
         if index is None:
@@ -339,22 +381,22 @@ class App:
             label(self.load_list, "还没有载荷，点击“添加”开始。", 9, MUTED,
                   wraplength=230).pack(anchor="w", pady=20)
         for i, row in enumerate(self.items):
-            card = tk.Frame(self.load_list, bg="#f6f9f6", padx=11, pady=10)
+            card = tk.Frame(self.load_list, bg=LOAD_CARD, padx=11, pady=10)
             card.pack(fill="x", pady=(0, 8))
-            head = tk.Frame(card, bg="#f6f9f6")
+            head = tk.Frame(card, bg=LOAD_CARD)
             head.pack(fill="x")
-            color = COLORS[i % len(COLORS)] if "force" in row else "#bd8267"
+            color = COLORS[i % len(COLORS)] if "force" in row else "#5479ac"
             label(head, "●", 8, color).pack(side="left", padx=(0, 6))
-            name = label(head, row["name"], 11, bold=True)
+            name = label(head, row["name"], 12, bold=True)
             name.pack(side="left")
             remove = button(head, "×", lambda j=i: self.remove_load(j), small=True)
-            remove.configure(bg="#f6f9f6", padx=5, pady=0, fg=MUTED)
+            remove.configure(bg=LOAD_CARD, padx=5, pady=0, fg=MUTED)
             remove.pack(side="right")
             if "force" in row:
                 f = row["force"]
                 label(head, f"{norm(f.components):.5g} N", 9, MUTED).pack(side="right", padx=4)
-                label(card, "作用点  "+compact(f.point), 9, MUTED).pack(anchor="w", pady=(6, 2))
-                label(card, "分量     "+compact(f.components), 9).pack(anchor="w")
+                label(card, "作用点  "+compact(f.point), 9, MUTED, wraplength=270, justify="left").pack(anchor="w", pady=(6, 2))
+                label(card, "分量     "+compact(f.components), 10, wraplength=270, justify="left").pack(anchor="w")
             else:
                 label(card, "力偶矩  "+compact(row["couple"])+" N·m", 9, MUTED).pack(anchor="w", pady=(7, 0))
             # 点击卡片编辑；删除按钮保留自身的点击行为。
@@ -374,7 +416,7 @@ class App:
             return
         self.snapshot = None
         self.export_button.configure(state="disabled")
-        self.status.configure(text="简化点已修改，点击下方按钮更新结果。", fg="#a27d4d")
+        self.status.configure(text="简化点已修改，点击下方按钮更新结果。", fg=WARNING)
         self.summary_note.configure(text="输入已修改 · 当前显示上一次计算结果")
 
     def get_inputs(self):
@@ -410,10 +452,10 @@ class App:
                                        else "主矢与主矩在给定容差内均为零。")
                 self.couple_label.config(text="")
             self.summary_note.config(text="给定简化点处的主矢与主矩 · O = "+compact(origin))
-            self.status.config(text="已完成计算，结果可导出为图片。", fg=GREEN)
+            self.status.config(text="已完成计算，结果可导出为图片。", fg=BLUE)
             self.export_button.configure(state="normal")
-            log = "01  读取输入\n"+f"{len(forces)} 个力，{len(couples)} 个力偶\nO = {compact(origin)}\n\n"
-            log += "02  计算与简化\n\n"+format_result(result, forces)
+            log = "输入数据\n"+f"{len(forces)} 个力，{len(couples)} 个力偶\nO = {compact(origin)}\n\n"
+            log += "计算结果\n\n"+format_result(result, forces)
             self.log.config(state="normal")
             self.log.delete("1.0", "end")
             self.log.insert("1.0", log)
@@ -422,7 +464,7 @@ class App:
         except (ValueError, TypeError, OverflowError) as exc:
             self.snapshot = None
             self.export_button.configure(state="disabled")
-            self.status.config(text=str(exc), fg="#b26d58")
+            self.status.config(text=str(exc), fg=ERROR)
             self.summary_note.config(text="输入有误 · 当前显示上一次有效结果")
             return False
 
@@ -446,11 +488,21 @@ class App:
     def toggle_details(self):
         self.drawer_open = not self.drawer_open
         if self.drawer_open:
+            self.closed_geometry = self.root.geometry()
+            self.closed_minsize = self.root.minsize()
             self.drawer.grid(row=0, column=2, sticky="nsew", padx=(18, 0))
-            self.root.geometry(f"{min(1650,self.root.winfo_screenwidth()-50)}x900")
+            if self.root.state() != "zoomed":
+                self.root.update_idletasks()
+                width = min(self.root.winfo_width()+348, self.root.winfo_screenwidth()-50)
+                height = min(self.root.winfo_height(), self.root.winfo_screenheight()-90)
+                self.root.minsize(min(1390, width), min(780, height))
+                self.root.geometry(f"{width}x{height}")
         else:
             self.drawer.grid_remove()
-            self.root.geometry("1380x900")
+            if self.closed_minsize:
+                self.root.minsize(*self.closed_minsize)
+            if self.closed_geometry and self.root.state() != "zoomed":
+                self.root.geometry(self.closed_geometry)
         self.details_button.config(text="收起细节  ‹" if self.drawer_open else "运行细节  ›")
 
     def load(self, data):
@@ -501,8 +553,9 @@ class App:
         if path:
             try:
                 forces, couples, geometry = self.snapshot
-                export_result(path, forces, self.result, couples, geometry)
-                self.status.config(text="结果图片已保存。", fg=GREEN)
+                views = [(ax.elev, ax.azim, ax.roll) for ax in self.figure.axes]
+                export_result(path, forces, self.result, couples, geometry, views=views)
+                self.status.config(text="结果图片已保存。", fg=BLUE)
             except (OSError, ValueError) as exc:
                 messagebox.showerror("无法导出图片", str(exc), parent=self.root)
 

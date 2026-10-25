@@ -9,11 +9,8 @@ import numpy as np
 
 from mechanics import KINDS, norm, unit
 
-INK = "#203e3b"
-MUTED = "#7e918d"
-GREEN = "#347f70"
-CORAL = "#c77f67"
-COLORS = ("#388879", "#608bb8", "#b58a4a", "#927ab4", "#b56e83", "#6b9d58")
+from theme import (INK, SECONDARY as MUTED, BLUE, MOMENT_BLUE,
+                   FORCE_COLORS as COLORS, SOFT, BORDER)
 
 
 def configure_fonts():
@@ -46,7 +43,7 @@ def _wireframe(ax, points):
     for i, p in enumerate(points):
         for j, q in enumerate(points):
             if j > i and sum(abs(p-q) > 1e-10) == 1:
-                ax.plot(*np.array([p, q]).T, color="#c9d9d3", linewidth=.8, alpha=.9)
+                ax.plot(*np.array([p, q]).T, color="#b7c9e1", linewidth=1.0, alpha=.9)
 
 
 def _base_axes(ax):
@@ -55,15 +52,15 @@ def _base_axes(ax):
     ax.set_proj_type("ortho")
     ax.set_box_aspect((1, 1, 1))
     for axis in (ax.xaxis, ax.yaxis, ax.zaxis):
-        axis.set_pane_color((.975, .985, .98, .6))
-        axis.line.set_color("#d6e1dc")
-        axis._axinfo["grid"]["color"] = "#e7eeea"
+        axis.set_pane_color((.974, .983, .997, .65))
+        axis.line.set_color("#c6d3e5")
+        axis._axinfo["grid"]["color"] = "#e4ebf5"
         axis._axinfo["grid"]["linewidth"] = .55
         axis.set_major_locator(ticker.MaxNLocator(3))
-    ax.set_xlabel("x / m", fontsize=8, labelpad=-1, color=MUTED)
-    ax.set_ylabel("y / m", fontsize=8, labelpad=-1, color=MUTED)
-    ax.set_zlabel("z / m", fontsize=8, labelpad=-1, color=MUTED)
-    ax.tick_params(labelsize=7, colors=MUTED, pad=-1)
+    ax.set_xlabel("x / m", fontsize=10, labelpad=0, color=MUTED)
+    ax.set_ylabel("y / m", fontsize=10, labelpad=0, color=MUTED)
+    ax.set_zlabel("z / m", fontsize=10, labelpad=0, color=MUTED)
+    ax.tick_params(labelsize=9, colors=MUTED, pad=0)
     ax.mouse_init(rotate_btn=1, zoom_btn=3)
 
 
@@ -72,10 +69,10 @@ def _arrow(ax, start, value, factor, color, label):
     if norm(value) <= 1e-15:
         return start
     delta = value * factor
-    ax.quiver(*start, *delta, color=color, linewidth=2,
+    ax.quiver(*start, *delta, color=color, linewidth=2.5,
               arrow_length_ratio=.19, normalize=False)
     tip = start + delta
-    ax.text(*tip, " "+label, color=color, fontsize=10,
+    ax.text(*tip, " "+label, color=color, fontsize=12,
             bbox=dict(facecolor="white", edgecolor="none", pad=.3, alpha=.8))
     return tip
 
@@ -92,12 +89,12 @@ def _moment_loop(ax, point, moment, radius, label):
     point = np.array(point)
     theta = np.linspace(.2, math.pi*1.7, 50)
     ring = [point + radius*(math.cos(t)*u+math.sin(t)*v) for t in theta]
-    ax.plot(*np.array(ring).T, color=CORAL, linewidth=1.8)
+    ax.plot(*np.array(ring).T, color=MOMENT_BLUE, linewidth=2.2)
     tip = ring[-1]
     tangent = -math.sin(theta[-1])*u+math.cos(theta[-1])*v
-    ax.quiver(*tip, *(tangent*radius*.25), color=CORAL,
+    ax.quiver(*tip, *(tangent*radius*.25), color=MOMENT_BLUE,
               linewidth=1.8, arrow_length_ratio=.65)
-    ax.text(*(point + radius*1.4*u), " "+label, color=CORAL, fontsize=9)
+    ax.text(*(point + radius*1.4*u), " "+label, color=MOMENT_BLUE, fontsize=11)
     return ring
 
 
@@ -115,43 +112,43 @@ def draw_panels(figure, forces, result, couples=(), geometry=None, *, export=Fal
     for ax in axes:
         _base_axes(ax)
         _wireframe(ax, geometry_points)
-        ax.scatter(*origin, color=INK, s=13, depthshade=False)
-        ax.text(*origin, " O", fontsize=9, color=INK)
-    all_points = anchors.copy()
+        ax.scatter(*origin, color=INK, s=17, depthshade=False)
+        ax.text(*origin, " O", fontsize=10, color=INK)
+    panel_points = [anchors.copy(), anchors.copy()]
     for i, f in enumerate(forces):
         color = COLORS[i % len(COLORS)]
         axes[0].scatter(*f.point, s=10, color=color, depthshade=False)
-        all_points.append(_arrow(axes[0], f.point, f.components, factor, color, f.name or f"F{i+1}"))
+        panel_points[0].append(_arrow(axes[0], f.point, f.components, factor, color, f.name or f"F{i+1}"))
     for i, c in enumerate(couples):
-        all_points += _moment_loop(axes[0], origin, c, scene*.17, f"C{i+1}")
+        panel_points[0] += _moment_loop(axes[0], origin, c, scene*.17, f"C{i+1}")
     kind = result["kind"]
     if kind in ("resultant", "wrench"):
         point = np.array(result["central_point"])
         d = np.array(result["axis_direction"])
         endpoints = [point - d*scene*.7, point+d*scene*.9]
-        axes[1].plot(*np.array(endpoints).T, color=GREEN, linewidth=1.1,
+        axes[1].plot(*np.array(endpoints).T, color=BLUE, linewidth=1.4,
                      linestyle=(0, (4, 4)), alpha=.7)
-        axes[1].scatter(*point, s=18, color=GREEN, depthshade=False)
-        axes[1].text(*point, " A", color=GREEN, fontsize=9)
-        all_points.extend(endpoints)
-        all_points.append(_arrow(axes[1], point, result["resultant"], factor, GREEN, "R"))
+        axes[1].scatter(*point, s=18, color=BLUE, depthshade=False)
+        axes[1].text(*point, " A", color=BLUE, fontsize=11)
+        panel_points[1].extend(endpoints)
+        panel_points[1].append(_arrow(axes[1], point, result["resultant"], factor, BLUE, "R"))
         if kind == "wrench":
-            all_points += _moment_loop(axes[1], point, result["axial_couple"], scene*.2, "M∥")
+            panel_points[1] += _moment_loop(axes[1], point, result["axial_couple"], scene*.2, "M∥")
     elif kind == "couple":
-        all_points += _moment_loop(axes[1], origin, result["moment"], scene*.23, "M")
+        panel_points[1] += _moment_loop(axes[1], origin, result["moment"], scene*.23, "M")
     else:
-        axes[1].text2D(.5, .5, "R = 0   /   M = 0", ha="center", color=GREEN,
+        axes[1].text2D(.5, .5, "R = 0   /   M = 0", ha="center", color=BLUE,
                        transform=axes[1].transAxes, fontsize=12)
-    points = np.array(all_points)
-    low, high = points.min(axis=0), points.max(axis=0)
-    center = (low+high)/2
-    half = max(.7, max(high-low)*.65)
-    for ax in axes:
+    for ax, coordinates in zip(axes, panel_points):
+        points = np.array(coordinates)
+        low, high = points.min(axis=0), points.max(axis=0)
+        center = (low+high)/2
+        half = max(.55, max(high-low)*.60)
         ax.set_xlim(center[0]-half, center[0]+half)
         ax.set_ylim(center[1]-half, center[1]+half)
         ax.set_zlim(center[2]-half, center[2]+half)
-    axes[0].set_title("原力系", loc="left", color=INK, fontsize=11, pad=-1)
-    axes[1].set_title("最终简化 · "+KINDS[kind], loc="left", color=INK, fontsize=11, pad=-1)
+    axes[0].set_title("原力系", loc="left", color=INK, fontsize=13, fontweight="medium", pad=3)
+    axes[1].set_title("最终简化 · "+KINDS[kind], loc="left", color=INK, fontsize=13, fontweight="medium", pad=3)
     return axes
 
 
@@ -161,25 +158,28 @@ def preview_figure(forces, result, couples=(), geometry=None):
     return figure
 
 
-def result_figure(forces, result, couples=(), geometry=None):
+def result_figure(forces, result, couples=(), geometry=None, *, views=None):
     from matplotlib.patches import FancyBboxPatch
     figure = Figure(figsize=(12, 9), dpi=120, facecolor="white")
     figure.text(.055, .947, "空间力系的简化与计算", fontsize=23, color=INK, fontweight="bold")
     figure.text(.055, .909, f"简化点 O = {compact(result['origin'])} m", fontsize=11, color=MUTED)
-    figure.text(.945, .947, KINDS[result["kind"]], ha="right", fontsize=16, color=GREEN)
-    draw_panels(figure, forces, result, couples, geometry, export=True)
+    figure.text(.945, .947, KINDS[result["kind"]], ha="right", fontsize=16, color=BLUE)
+    axes = draw_panels(figure, forces, result, couples, geometry, export=True)
+    if views is not None:
+        for ax, (elev, azim, roll) in zip(axes, views):
+            ax.view_init(elev=elev, azim=azim, roll=roll)
     for left, key, title, units in ((.055, "resultant", "主矢  R", "N"),
                                     (.515, "moment", "主矩  M_O", "N·m")):
         figure.patches.append(FancyBboxPatch((left-.01, .266), .425, .153,
             boxstyle="round,pad=0.012,rounding_size=0.012", transform=figure.transFigure,
-            facecolor="#f1f6f3", edgecolor="none", zorder=-1))
+            facecolor=SOFT, edgecolor="none", zorder=-1))
         figure.text(left+.01, .387, title, color=MUTED, fontsize=11)
         figure.text(left+.01, .348, f"{result[key+'_magnitude']:.7g}  {units}",
                     color=INK, fontsize=22)
         figure.text(left+.01, .315, "分量  "+compact(result[key]), color=INK, fontsize=11)
         angles = result[key+"_angles_deg"]
         angle_text = "未定义（零向量）" if angles is None else compact(angles)+" °"
-        figure.text(left+.01, .281, "方向角  "+angle_text, color=MUTED, fontsize=10)
+        figure.text(left+.01, .281, "方向角  "+angle_text, color=MUTED, fontsize=11)
     if result["central_point"] is not None:
         label = "合力作用线" if result["kind"] == "resultant" else "中央轴"
         lines = [
@@ -196,14 +196,14 @@ def result_figure(forces, result, couples=(), geometry=None):
     for i, text in enumerate(lines):
         figure.text(.055, .217-i*.037, text, color=INK, fontsize=11)
     figure.text(.055, .056, "方向角为与 x、y、z 正轴的夹角。箭头按显示比例绘制；坐标单位 m。",
-                color=MUTED, fontsize=9)
+                color=MUTED, fontsize=10)
     figure.text(.055, .031, "力与力矩分别使用显示比例，环形箭头表示力偶矩方向。",
-                color=MUTED, fontsize=9)
+                color=MUTED, fontsize=10)
     return figure
 
 
-def export_result(path, forces, result, couples=(), geometry=None):
-    figure = result_figure(forces, result, couples, geometry)
+def export_result(path, forces, result, couples=(), geometry=None, *, views=None):
+    figure = result_figure(forces, result, couples, geometry, views=views)
     path = Path(path)
     if path.suffix.lower() not in (".png", ".svg"):
         raise ValueError("请选择 PNG 或 SVG 格式")

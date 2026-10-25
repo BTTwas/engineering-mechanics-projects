@@ -10,7 +10,7 @@
 | --- | --- |
 | [mechanics.py](../mechanics.py) | 主矢、主矩及最终简化的计算 |
 | [gui.py](../gui.py)、[launch.pyw](../launch.pyw) | 窗口界面及双击启动入口 |
-| [plotting.py](../plotting.py) | 三维绘图及 PNG、SVG 结果导出 |
+| [plotting.py](../plotting.py)、[theme.py](../theme.py) | 三维绘图、图片导出与共用配色 |
 | [numbers_input.py](../numbers_input.py) | 窗口中的数值和简单算式输入 |
 | [main.py](../main.py) | 命令行交互及数据读写 |
 | [requirements.txt](../requirements.txt) | 窗口绘图依赖 |
