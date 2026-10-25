@@ -1,0 +1,8 @@
+# Keep language statistics focused on source code.
+force-system/docs/** linguist-documentation
+force-system/docs/report.html linguist-generated
+force-system/docs/*.svg linguist-generated
+
+# Output files produced by the Python program.
+force-system/examples/cube_output.* linguist-generated
+force-system/examples/cube_result.* linguist-generated
