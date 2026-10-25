@@ -63,5 +63,14 @@
       ]
     }
   ],
-  "couples": []
+  "couples": [],
+  "geometry": {
+    "type": "cube",
+    "side": 1,
+    "origin": [
+      0,
+      0,
+      0
+    ]
+  }
 }

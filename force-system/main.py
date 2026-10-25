@@ -64,11 +64,14 @@ def main():
     source.add_argument("--example", action="store_true", help="运行课堂立方体算例")
     source.add_argument("--input", type=Path, help="读取 JSON 算例")
     parser.add_argument("--output", type=Path, help="把计算结果另存为 JSON")
+    parser.add_argument("--image", type=Path, help="导出结果图（PNG 或 SVG）")
     args = parser.parse_args()
+    data = {}
     try:
         if args.example or args.input:
             path = HERE / "examples" / "cube.json" if args.example else args.input
-            forces, origin, couples = load_case(json.loads(path.read_text(encoding="utf-8")))
+            data = json.loads(path.read_text(encoding="utf-8"))
+            forces, origin, couples = load_case(data)
         else:
             forces, origin, couples = interactive()
         result = reduce_system(forces, origin, couples)
@@ -77,6 +80,13 @@ def main():
             args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2,
                                               allow_nan=False) + "\n", encoding="utf-8")
             print(f"\n已保存：{args.output}")
+        if args.image:
+            try:
+                from plotting import export_result
+            except ImportError:
+                parser.exit(2, "导出图片需要先运行：python -m pip install -r requirements.txt\n")
+            export_result(args.image, forces, result, couples, data.get("geometry"))
+            print(f"\n图片已保存：{args.image}")
         return 0
     except (ValueError, TypeError, OSError) as exc:
         parser.exit(2, f"输入错误：{exc}\n")
