@@ -1,0 +1,67 @@
+{
+  "title": "课堂立方体算例",
+  "origin": [
+    0,
+    0,
+    0
+  ],
+  "forces": [
+    {
+      "name": "F1",
+      "point": [
+        1,
+        0,
+        0
+      ],
+      "magnitude": 1,
+      "direction": [
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "name": "F2",
+      "point": [
+        1,
+        1,
+        0
+      ],
+      "magnitude": 1.4142135623730951,
+      "direction": [
+        0,
+        -1,
+        1
+      ]
+    },
+    {
+      "name": "F3",
+      "point": [
+        0,
+        1,
+        0
+      ],
+      "magnitude": 1,
+      "direction": [
+        0,
+        -1,
+        0
+      ]
+    },
+    {
+      "name": "F4",
+      "point": [
+        0,
+        0,
+        1
+      ],
+      "magnitude": 1.4142135623730951,
+      "direction": [
+        1,
+        1,
+        0
+      ]
+    }
+  ],
+  "couples": []
+}
