@@ -8,7 +8,7 @@ Vector = tuple[float, float, float]
 
 def vector(values, name="向量") -> Vector:
     try:
-        if len(values) != 3:
+        if isinstance(values, (str, bytes, dict)) or len(values) != 3:
             raise ValueError
         if any(isinstance(x, bool) for x in values):
             raise ValueError
@@ -70,7 +70,10 @@ class Force:
     def from_direction(cls, point, magnitude, direction, name=""):
         if isinstance(magnitude, bool):
             raise ValueError("力的大小应为非负有限数")
-        magnitude = float(magnitude)
+        try:
+            magnitude = float(magnitude)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError("力的大小应为非负有限数") from None
         if not math.isfinite(magnitude) or magnitude < 0:
             raise ValueError("力的大小应为非负有限数")
         direction = vector(direction, "方向向量")
@@ -163,6 +166,9 @@ def angles(a):
 def load_case(data):
     if not isinstance(data, dict):
         raise ValueError("算例应为 JSON 对象")
+    for key in ("forces", "couples"):
+        if not isinstance(data.get(key, []), list):
+            raise ValueError(f"{key} 应为数组")
     forces = []
     for i, item in enumerate(data.get("forces", []), 1):
         if not isinstance(item, dict):

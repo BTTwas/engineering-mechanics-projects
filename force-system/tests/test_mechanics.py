@@ -98,6 +98,19 @@ class ReductionTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 load_case(case)
 
+    def test_invalid_case_fields(self):
+        cases = [
+            {"forces": None}, {"forces": {}}, {"forces": "F1"},
+            {"couples": None}, {"couples": "123"},
+            {"origin": "123"},
+            {"forces": [{"point": [0, 0, 0], "magnitude": None,
+                         "direction": [1, 0, 0]}]},
+            {"forces": [{"point": [0, 0, 0], "components": "123"}]},
+        ]
+        for case in cases:
+            with self.subTest(case=case), self.assertRaises(ValueError):
+                load_case(case)
+
 
 if __name__ == "__main__":
     unittest.main()

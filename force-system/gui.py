@@ -1,6 +1,7 @@
 """简洁桌面界面：载荷输入、结果图和可展开的运行细节。"""
 
 import json
+import math
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -50,6 +51,8 @@ def field(parent, variable, width=8):
         entry.icursor("end")
         return "break"
     entry.bind("<Control-a>", select_all)
+    if parent.tk.call("tk", "windowingsystem") == "aqua":
+        entry.bind("<Command-a>", select_all)
     return box, entry
 
 
@@ -93,6 +96,7 @@ class LoadDialog(tk.Toplevel):
                 self.mode.set("分量")
             for v, x in zip(self.direction, values):
                 v.set(f"{x:.12g}")
+        self.input_mode = self.mode.get()
 
         shell = tk.Frame(self, bg=WHITE, padx=28, pady=24)
         shell.pack(fill="both", expand=True)
@@ -152,6 +156,28 @@ class LoadDialog(tk.Toplevel):
         if self.couple:
             self.vector_title.config(text="力偶矩分量 / N·m")
         else:
+            mode = self.mode.get()
+            if mode != self.input_mode:
+                try:
+                    values = tuple(number(v.get()) for v in self.direction)
+                    if mode == "分量":
+                        values = Force.from_direction(
+                            (0, 0, 0), number(self.magnitude.get()), values).components
+                    else:
+                        magnitude = norm(values)
+                        if not math.isfinite(magnitude):
+                            raise ValueError("力的大小超出范围，请缩小分量")
+                        self.magnitude.set(f"{magnitude:.17g}")
+                        if magnitude == 0:
+                            values = (0, 0, 1)
+                    for variable, value in zip(self.direction, values):
+                        variable.set(f"{value:.17g}")
+                except ValueError as exc:
+                    self.mode.set(self.input_mode)
+                    self.error.config(text=str(exc))
+                    return
+                self.input_mode = mode
+                self.error.config(text="")
             self.vector_title.config(text="方向向量" if self.mode.get() == "大小与方向" else "力的分量 / N")
             # 保持布局稳定，分量模式下仅禁用大小框。
             for widget in self.mag_frame.winfo_children():
@@ -179,6 +205,10 @@ class LoadDialog(tk.Toplevel):
 class App:
     def __init__(self, root):
         self.root = root
+        self.window_system = root.tk.call("tk", "windowingsystem")
+        self.scroll_events = ("<MouseWheel>",)
+        if self.window_system == "x11":
+            self.scroll_events += ("<Button-4>", "<Button-5>")
         self.items, self.result, self.geometry_data = [], None, None
         self.snapshot = None
         self.figure, self.figure_canvas = None, None
@@ -245,7 +275,8 @@ class App:
             scrollregion=self.load_canvas.bbox("all")))
         self.load_canvas.bind("<Configure>", lambda e: self.load_canvas.itemconfigure(
             self.list_window, width=e.width))
-        self.load_canvas.bind("<MouseWheel>", self.scroll_loads)
+        for event in self.scroll_events:
+            self.load_canvas.bind(event, self.scroll_loads)
 
         tk.Frame(inside, bg=BORDER, height=1).pack(fill="x", pady=(16, 17))
         label(inside, "简化点 O", 11, bold=True).pack(anchor="w")
@@ -339,6 +370,10 @@ class App:
         root.bind("<Control-Return>", lambda e: self.calculate())
         root.bind("<Control-o>", lambda e: self.open_case())
         root.bind("<Control-s>", lambda e: self.save_case())
+        if self.window_system == "aqua":
+            root.bind("<Command-Return>", lambda e: self.calculate())
+            root.bind("<Command-o>", lambda e: self.open_case())
+            root.bind("<Command-s>", lambda e: self.save_case())
         self.example()
 
     def resize_result_text(self, event):
@@ -347,7 +382,14 @@ class App:
         self.couple_label.configure(wraplength=width)
 
     def scroll_loads(self, event):
-        self.load_canvas.yview_scroll(-int(event.delta/120), "units")
+        if getattr(event, "num", None) in (4, 5):
+            steps = -1 if event.num == 4 else 1
+        elif event.delta:
+            delta = event.delta if self.window_system == "aqua" else event.delta / 120
+            steps = -int(delta) or (-1 if delta > 0 else 1)
+        else:
+            return "break"
+        self.load_canvas.yview_scroll(steps, "units")
         return "break"
 
     def add_menu(self):
@@ -404,7 +446,8 @@ class App:
                 if widget is remove:
                     return
                 widget.bind("<Button-1>", lambda e, k=j: LoadDialog(self, k))
-                widget.bind("<MouseWheel>", self.scroll_loads)
+                for event in self.scroll_events:
+                    widget.bind(event, self.scroll_loads)
                 if isinstance(widget, tk.Label):
                     widget.configure(cursor="hand2")
                 for child in widget.winfo_children():
@@ -510,6 +553,7 @@ class App:
         geometry = data.get("geometry")
         from plotting import _geometry_points
         _geometry_points(geometry)
+        reduce_system(forces, origin, couples)
         self.items = [{"name": f.name, "force": f} for f in forces]
         self.items += [{"name": f"C{i+1}", "couple": c} for i, c in enumerate(couples)]
         self.geometry_data = geometry
