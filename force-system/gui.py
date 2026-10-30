@@ -23,8 +23,8 @@ from theme import (BACKGROUND as BG, SURFACE as WHITE, INK, SECONDARY as MUTED,
 
 def label(parent, text="", size=10, color=INK, bold=False, **kwargs):
     return tk.Label(parent, text=text, bg=parent.cget("bg"), fg=color,
-                    font=(FONT, SIZES.get(size, size), "bold" if bold else "normal"), **kwargs)
-
+                    font=(FONT, SIZES.get(size, size), "bold" if bold else "normal"),
+                    **kwargs)
 
 def button(parent, text, command, *, primary=False, small=False):
     bg, fg = (BLUE, WHITE) if primary else (WHITE, INK)
@@ -36,9 +36,9 @@ def button(parent, text, command, *, primary=False, small=False):
                        highlightthickness=0, takefocus=True)
     return result
 
-
 def field(parent, variable, width=8):
-    box = tk.Frame(parent, bg=FIELD, highlightbackground=BORDER, highlightcolor=BLUE, highlightthickness=1)
+    box = tk.Frame(parent, bg=FIELD, highlightbackground=BORDER,
+                   highlightcolor=BLUE, highlightthickness=1)
     entry = tk.Entry(box, textvariable=variable, bg=FIELD, fg=INK,
                      insertbackground=BLUE, font=(FONT, 12), relief="flat", width=width)
     entry.pack(fill="both", expand=True, padx=9, pady=8)
@@ -46,10 +46,12 @@ def field(parent, variable, width=8):
     box.bind("<Leave>", lambda e: box.configure(highlightbackground=BORDER))
     entry.bind("<FocusIn>", lambda e: box.configure(highlightbackground=BLUE))
     entry.bind("<FocusOut>", lambda e: box.configure(highlightbackground=BORDER))
+
     def select_all(event):
         entry.select_range(0, "end")
         entry.icursor("end")
         return "break"
+
     entry.bind("<Control-a>", select_all)
     if parent.tk.call("tk", "windowingsystem") == "aqua":
         entry.bind("<Command-a>", select_all)
@@ -129,6 +131,7 @@ class LoadDialog(tk.Toplevel):
         self.hint.pack(anchor="w", pady=(0, 8))
         self.error = label(shell, "", size=9, color=ERROR, wraplength=390, justify="left")
         self.error.pack(anchor="w", pady=(0, 12))
+
         actions = tk.Frame(shell, bg=WHITE)
         actions.pack(fill="x")
         button(actions, "保存载荷", self.save, primary=True).pack(side="right")
@@ -178,7 +181,8 @@ class LoadDialog(tk.Toplevel):
                     return
                 self.input_mode = mode
                 self.error.config(text="")
-            self.vector_title.config(text="方向向量" if self.mode.get() == "大小与方向" else "力的分量 / N")
+            self.vector_title.config(
+                text="方向向量" if self.mode.get() == "大小与方向" else "力的分量 / N")
             # 保持布局稳定，分量模式下仅禁用大小框。
             for widget in self.mag_frame.winfo_children():
                 if isinstance(widget, tk.Frame):

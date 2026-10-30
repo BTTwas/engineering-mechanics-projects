@@ -23,33 +23,26 @@ def vector(values, name="向量") -> Vector:
 def add(a, b):
     return tuple(x + y for x, y in zip(a, b))
 
-
 def sub(a, b):
     return tuple(x - y for x, y in zip(a, b))
-
 
 def scale(a, k):
     return tuple(x * k for x in a)
 
-
 def dot(a, b):
     return math.fsum(x * y for x, y in zip(a, b))
 
-
 def cross(a, b):
-    return (a[1]*b[2] - a[2]*b[1],
-            a[2]*b[0] - a[0]*b[2],
-            a[0]*b[1] - a[1]*b[0])
-
+    return (a[1] * b[2] - a[2] * b[1],
+            a[2] * b[0] - a[0] * b[2],
+            a[0] * b[1] - a[1] * b[0])
 
 def norm(a):
     return math.hypot(*a)
 
-
 def unit(a):
     size = norm(a)
     return None if size == 0 else scale(a, 1 / size)
-
 
 def sum_vectors(vectors):
     rows = list(vectors)
@@ -82,6 +75,7 @@ class Force:
             raise ValueError("方向向量不能为零")
         if not math.isfinite(length):
             raise ValueError("方向向量量级过大，请缩小方向分量")
+
         # 此方法为先归一化再乘大小，方向分量表示比例，不要求使用者先算单位向量，
         components = tuple(magnitude * (x / length) for x in direction)
         return cls(point, components, name)
@@ -101,6 +95,7 @@ def reduce_system(forces, origin=(0, 0, 0), couples=(), *,
     origin = vector(origin, "简化点")
     forces = list(forces)
     couples = [vector(c, "力偶矩") for c in couples]
+
     tolerances = (force_atol, moment_atol, rtol)
     if any(not math.isfinite(t) or t < 0 for t in tolerances):
         raise ValueError("容差应为非负有限数")
@@ -118,6 +113,7 @@ def reduce_system(forces, origin=(0, 0, 0), couples=(), *,
         f_size, m_size = norm(resultant), norm(moment)
         if not math.isfinite(f_size) or not math.isfinite(m_size):
             raise ValueError("数值范围过大，请调整单位或输入量级")
+
         result = {
             "origin": origin, "resultant": resultant, "moment": moment,
             "resultant_magnitude": f_size, "moment_magnitude": m_size,
@@ -130,6 +126,7 @@ def reduce_system(forces, origin=(0, 0, 0), couples=(), *,
             "central_point": None, "axis_direction": None,
             "pitch": None, "axial_couple": None,
         }
+
         if f_size <= force_tol:
             result["kind"] = "equilibrium" if m_size <= moment_tol else "couple"
         else:
@@ -192,7 +189,6 @@ def load_case(data):
 
 def fmt(value):
     return f"{value:.8g}" if abs(value) >= 5e-12 else "0"
-
 
 def fmt_vec(a):
     return "(" + ", ".join(fmt(x) for x in a) + ")"

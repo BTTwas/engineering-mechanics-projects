@@ -18,7 +18,6 @@ def ask_vector(prompt):
         except ValueError as exc:
             print(exc)
 
-
 def ask_count(prompt):
     while True:
         try:
@@ -35,6 +34,7 @@ def interactive():
     print("长度用 m，力用 N。三个分量用空格隔开。")
     origin = ask_vector("简化点 x y z：")
     forces = []
+
     for i in range(ask_count("力的个数：")):
         print(f"\nF{i+1}")
         point = ask_vector("作用点 x y z：")
@@ -47,12 +47,14 @@ def interactive():
                 try:
                     magnitude = float(input("力的大小："))
                     direction = ask_vector("方向向量 dx dy dz（不必归一化）：")
-                    forces.append(Force.from_direction(point, magnitude, direction, f"F{i+1}"))
+                    forces.append(Force.from_direction(
+                        point, magnitude, direction, f"F{i+1}"))
                     break
                 except ValueError as exc:
                     print(exc)
             else:
                 print("请输入 1 或 2。")
+
     couples = [ask_vector(f"第 {i+1} 个力偶矩 Mx My Mz：")
                for i in range(ask_count("\n独立力偶的个数（没有则填 0）："))]
     return forces, origin, couples
@@ -67,6 +69,7 @@ def main():
     parser.add_argument("--image", type=Path, help="导出结果图（PNG 或 SVG）")
     args = parser.parse_args()
     data = {}
+
     try:
         if args.example or args.input:
             path = HERE / "examples" / "cube.json" if args.example else args.input
@@ -74,11 +77,13 @@ def main():
             forces, origin, couples = load_case(data)
         else:
             forces, origin, couples = interactive()
+
         result = reduce_system(forces, origin, couples)
         print(format_result(result, forces))
         if args.output:
-            args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2,
-                                              allow_nan=False) + "\n", encoding="utf-8")
+            args.output.write_text(
+                json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False) + "\n",
+                encoding="utf-8")
             print(f"\n已保存：{args.output}")
         if args.image:
             try:
