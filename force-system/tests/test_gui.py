@@ -119,6 +119,57 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(next_load_name(items), "F2")
         self.assertEqual(next_load_name(items, couple=True), "C2")
 
+    def test_renaming_force_keeps_original_values(self):
+        from mechanics import norm
+        from numbers_input import number
+        cases = [
+            {"origin": [1, 0, 0], "forces": [
+                {"point": [1.0000000000004, 0, 0], "components": [0, 1e12, 0]},
+                {"point": [1, 0, 0], "components": [0, -1e12, 0]}]},
+            {"forces": [{"point": [0, 0, 0],
+                         "components": [1.0000000000004, -1.2345678901234567, 1e-15]}]},
+        ]
+        for case in cases:
+            with self.subTest(case=case):
+                self.app.load(case)
+                force = self.app.items[0]["force"]
+                before = self.app.result
+                dialog = LoadDialog(self.app, 0)
+                dialog.withdraw()
+                self.addCleanup(lambda d=dialog: d.destroy() if d.winfo_exists() else None)
+                self.assertEqual(number(dialog.magnitude.get()), norm(force.components))
+                dialog.name.set("重命名的力")
+                dialog.save()
+                saved = self.app.items[0]["force"]
+                self.assertEqual(saved.name, "重命名的力")
+                self.assertEqual(saved.point, force.point)
+                self.assertEqual(saved.components, force.components)
+                self.assertEqual(self.app.result, before)
+
+    def test_renaming_couple_keeps_original_values(self):
+        couple = (1.0000000000004, -1.2345678901234567, 1e-15)
+        self.app.load({"couples": [couple]})
+        before = self.app.result
+        dialog = LoadDialog(self.app, 0)
+        dialog.withdraw()
+        self.addCleanup(lambda: dialog.destroy() if dialog.winfo_exists() else None)
+        dialog.name.set("重命名的力偶")
+        dialog.save()
+        self.assertEqual(self.app.items[0], {"name": "重命名的力偶", "couple": couple})
+        self.assertEqual(self.app.result, before)
+
+    def test_cancel_edit_keeps_inputs_and_result(self):
+        before = list(self.app.items)
+        result = self.app.result
+        dialog = LoadDialog(self.app, 0)
+        dialog.withdraw()
+        dialog.name.set("临时名称")
+        dialog.point[0].set("123")
+        dialog.direction[1].set("456")
+        dialog.destroy()
+        self.assertEqual(self.app.items, before)
+        self.assertIs(self.app.result, result)
+
     def test_invalid_origin_disables_export_until_recalculated(self):
         self.app.origin[0].set("sqrt(-1)")
         self.assertIsNone(self.app.snapshot)

@@ -92,12 +92,12 @@ class LoadDialog(tk.Toplevel):
             else:
                 f = item["force"]
                 for v, x in zip(self.point, f.point):
-                    v.set(f"{x:.12g}")
+                    v.set(f"{x:.17g}")
                 values = f.components
-                self.magnitude.set(f"{norm(f.components):.12g}")
+                self.magnitude.set(f"{norm(f.components):.17g}")
                 self.mode.set("分量")
             for v, x in zip(self.direction, values):
-                v.set(f"{x:.12g}")
+                v.set(f"{x:.17g}")
         self.input_mode = self.mode.get()
 
         shell = tk.Frame(self, bg=WHITE, padx=28, pady=24)
