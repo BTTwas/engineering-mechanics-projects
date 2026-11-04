@@ -158,7 +158,7 @@ def preview_figure(forces, result, couples=(), geometry=None):
     return figure
 
 
-def result_figure(forces, result, couples=(), geometry=None, *, views=None):
+def result_figure(forces, result, couples=(), geometry=None, *, views=None, limits=None):
     from matplotlib.patches import FancyBboxPatch
     figure = Figure(figsize=(12, 9), dpi=120, facecolor="white")
     figure.text(.055, .947, "空间力系的简化与计算", fontsize=23, color=INK, fontweight="bold")
@@ -168,6 +168,11 @@ def result_figure(forces, result, couples=(), geometry=None, *, views=None):
     if views is not None:
         for ax, (elev, azim, roll) in zip(axes, views):
             ax.view_init(elev=elev, azim=azim, roll=roll)
+    if limits is not None:
+        for ax, (xlim, ylim, zlim) in zip(axes, limits):
+            ax.set_xlim3d(xlim)
+            ax.set_ylim3d(ylim)
+            ax.set_zlim3d(zlim)
     for left, key, title, units in ((.055, "resultant", "主矢  R", "N"),
                                     (.515, "moment", "主矩  M_O", "N·m")):
         figure.patches.append(FancyBboxPatch((left-.01, .266), .425, .153,
@@ -202,8 +207,8 @@ def result_figure(forces, result, couples=(), geometry=None, *, views=None):
     return figure
 
 
-def export_result(path, forces, result, couples=(), geometry=None, *, views=None):
-    figure = result_figure(forces, result, couples, geometry, views=views)
+def export_result(path, forces, result, couples=(), geometry=None, *, views=None, limits=None):
+    figure = result_figure(forces, result, couples, geometry, views=views, limits=limits)
     path = Path(path)
     if path.suffix.lower() not in (".png", ".svg"):
         raise ValueError("请选择 PNG 或 SVG 格式")

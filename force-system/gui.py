@@ -602,7 +602,10 @@ class App:
             try:
                 forces, couples, geometry = self.snapshot
                 views = [(ax.elev, ax.azim, ax.roll) for ax in self.figure.axes]
-                export_result(path, forces, self.result, couples, geometry, views=views)
+                limits = [(ax.get_xlim3d(), ax.get_ylim3d(), ax.get_zlim3d())
+                          for ax in self.figure.axes]
+                export_result(path, forces, self.result, couples, geometry,
+                              views=views, limits=limits)
                 self.status.config(text="结果图片已保存。", fg=BLUE)
             except (OSError, ValueError) as exc:
                 messagebox.showerror("无法导出图片", str(exc), parent=self.root)

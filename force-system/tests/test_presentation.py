@@ -5,13 +5,15 @@ import math
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 import xml.etree.ElementTree as ET
 
 from PIL import Image
+from matplotlib.figure import Figure
 
 from mechanics import Force, load_case, reduce_system
 from numbers_input import number
-from plotting import result_figure, export_result
+from plotting import preview_figure, result_figure, export_result
 
 HERE = Path(__file__).resolve().parents[1]
 
@@ -65,6 +67,48 @@ class ImageTests(unittest.TestCase):
             for actual, expected in zip((ax.elev, ax.azim, ax.roll), view):
                 self.assertAlmostEqual(actual, expected)
         figure.clear()
+
+    def test_export_keeps_each_panels_zoom(self):
+        forces = [Force((1, 0, 0), (0, 1, 0))]
+        result = reduce_system(forces)
+        views = [(40, 75, 10), (18, -120, 0)]
+        limits = [((0, 1), (-.5, .5), (-.5, .5)),
+                  ((-1, 2), (-1, 1), (-1, 1))]
+        preview = preview_figure(forces, result)
+        for ax, view, bounds in zip(preview.axes, views, limits):
+            ax.view_init(*view)
+            ax.set_xlim3d(bounds[0])
+            ax.set_ylim3d(bounds[1])
+            ax.set_zlim3d(bounds[2])
+        limits = [(ax.get_xlim3d(), ax.get_ylim3d(), ax.get_zlim3d())
+                  for ax in preview.axes]
+        savefig = Figure.savefig
+
+        def save_and_check(figure, *args, **kwargs):
+            saved = savefig(figure, *args, **kwargs)
+            for ax, view, bounds in zip(figure.axes, views, limits):
+                for actual, expected in zip((ax.elev, ax.azim, ax.roll), view):
+                    self.assertLessEqual(abs(actual - expected), 1e-10)
+                actual_bounds = (ax.get_xlim3d(), ax.get_ylim3d(), ax.get_zlim3d())
+                for actual, expected in zip(actual_bounds, bounds):
+                    for value, target in zip(actual, expected):
+                        self.assertLessEqual(abs(value - target), 1e-12)
+            return saved
+
+        with tempfile.TemporaryDirectory(dir=HERE) as tmp:
+            with patch.object(Figure, "savefig", save_and_check):
+                for extension in ("png", "svg"):
+                    with self.subTest(extension=extension):
+                        path = Path(tmp) / f"zoomed.{extension}"
+                        export_result(path, forces, result, views=views, limits=limits)
+                        if extension == "png":
+                            with Image.open(path) as image:
+                                self.assertEqual(image.size, (3120, 2340))
+                        else:
+                            self.assertTrue(ET.parse(path).getroot().tag.endswith("svg"))
+        self.assertEqual(result["resultant"], (0, 1, 0))
+        self.assertEqual(result["moment"], (0, 0, 1))
+        preview.clear()
 
     def test_cube_png_has_print_resolution(self):
         data = json.loads((HERE/"examples"/"cube.json").read_text(encoding="utf-8"))
