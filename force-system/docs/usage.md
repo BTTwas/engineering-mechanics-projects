@@ -40,11 +40,13 @@ Windows 配置了 Python 文件关联时，也可以双击 `launch.pyw` 打开�
     {"name": "F1", "point": [1, 0, 0], "components": [0, 0, 1]},
     {"name": "F2", "point": [1, 1, 0], "magnitude": 2, "direction": [0, -1, 1]}
   ],
-  "couples": []
+  "couples": [{"name": "底座力偶", "moment": [1, -2, 3]}]
 }
 ```
 
 JSON 文件中使用数值，算式写法只用于窗口输入框。示例中的 F₂ 大小为 2 N，用于说明输入格式；课堂立方体算例使用 `examples/cube.json` 中的 √2 N。可选的 `geometry` 字段仅控制参考线框，不参与力学计算。
+
+力偶的 `name` 为名称，`moment` 为矩分量。保存输入会保留自定义名称；旧格式 `"couples": [[1, -2, 3]]` 也能读取，未填写名称时按顺序使用 C1、C2。
 
 ## 命令行
 

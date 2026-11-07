@@ -1,8 +1,11 @@
 """检查载荷编辑和输入变更后的计算状态。"""
 
+import json
+from pathlib import Path
+import tempfile
 import unittest
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 try:
     import tkinter as tk
@@ -60,6 +63,59 @@ class LoadModeTests(unittest.TestCase):
 
 @unittest.skipIf(tk is None, "未安装窗口依赖")
 class InputTests(unittest.TestCase):
+    def make_app(self):
+        from mechanics import reduce_system
+        interpreter = tk.Tcl()
+        app = SimpleNamespace(
+            items=[], geometry_data=None, root=None,
+            origin=[tk.StringVar(interpreter, "0") for _ in range(3)],
+            render_loads=Mock(),
+        )
+        app.get_inputs = lambda: App.get_inputs(app)
+        app.load = lambda data: App.load(app, data)
+        def calculate():
+            app.result = reduce_system(*app.get_inputs())
+            return True
+        app.calculate = calculate
+        return app
+
+    def test_couple_names_survive_json_save_and_open(self):
+        from mechanics import Force
+        app = self.make_app()
+        app.items = [
+            {"name": "F1", "force": Force((1, 0, 0), (0, 2, 0), "F1")},
+            {"name": "底座力偶", "couple": (1, -2, 3)},
+            {"name": "另一力偶", "couple": (1.0000000000004, 1e-15, 0)},
+        ]
+        app.calculate()
+        before, result = list(app.items), app.result
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "case.json"
+            with patch("gui.filedialog.asksaveasfilename", return_value=str(path)):
+                App.save_case(app)
+            saved = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(saved["couples"][0],
+                             {"name": "底座力偶", "moment": [1, -2, 3]})
+            app.items = []
+            app.result = None
+            with patch("gui.filedialog.askopenfilename", return_value=str(path)):
+                App.open_case(app)
+        self.assertEqual(app.items, before)
+        self.assertEqual(app.result, result)
+
+    def test_legacy_and_mixed_couple_names(self):
+        app = self.make_app()
+        cases = [
+            ([[1, -2, 3]], ["C1"]),
+            ([{"name": "底座力偶", "moment": [1, -2, 3]},
+              [0, 0, 2], {"moment": [0, 1, 0]}], ["底座力偶", "C2", "C3"]),
+        ]
+        for couples, names in cases:
+            with self.subTest(couples=couples):
+                app.load({"couples": couples})
+                self.assertEqual([row["name"] for row in app.items], names)
+                self.assertEqual(app.items[0]["couple"], (1, -2, 3))
+
     def test_invalid_case_does_not_replace_current_inputs(self):
         app = SimpleNamespace(items=[{"name": "F1"}], snapshot=object())
         before = list(app.items)

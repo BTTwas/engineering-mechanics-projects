@@ -56,6 +56,19 @@ class ReductionTests(unittest.TestCase):
         force = Force.from_direction((0, 0, 0), 5, (3, 4, 0))
         self.assertVector(force.components, (3, 4, 0))
 
+    def test_named_couples_match_legacy_vectors(self):
+        expected = reduce_system([], couples=[(1, -2, 3), (0, 1, 2)])
+        cases = [
+            [[1, -2, 3], [0, 1, 2]],
+            [{"name": "底座力偶", "moment": [1, -2, 3]}, {"moment": [0, 1, 2]}],
+            [[1, -2, 3], {"name": "另一力偶", "moment": [0, 1, 2]}],
+        ]
+        for couples in cases:
+            with self.subTest(couples=couples):
+                forces, origin, moments = load_case({"couples": couples})
+                self.assertEqual(moments, [(1, -2, 3), (0, 1, 2)])
+                self.assertEqual(reduce_system(forces, origin, moments), expected)
+
     def test_moment_transfer_and_reconstruction(self):
         forces = [Force((1, 3, -2), (2, -1, 4)),
                   Force((-1, 2, 5), (-3, 2, 1))]
@@ -102,6 +115,9 @@ class ReductionTests(unittest.TestCase):
         cases = [
             {"forces": None}, {"forces": {}}, {"forces": "F1"},
             {"couples": None}, {"couples": "123"},
+            {"couples": [{"name": "缺少力偶矩"}]},
+            {"couples": [{"moment": [1, 2]}]},
+            {"couples": [{"moment": [1, float("inf"), 3]}]},
             {"origin": "123"},
             {"forces": [{"point": [0, 0, 0], "magnitude": None,
                          "direction": [1, 0, 0]}]},

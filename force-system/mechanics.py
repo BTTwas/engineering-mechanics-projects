@@ -183,7 +183,13 @@ def load_case(data):
         except KeyError as exc:
             raise ValueError(f"{name} 缺少字段 {exc.args[0]}") from None
     origin = vector(data.get("origin", [0, 0, 0]), "简化点")
-    couples = [vector(x, "力偶矩") for x in data.get("couples", [])]
+    couples = []
+    for i, item in enumerate(data.get("couples", []), 1):
+        if isinstance(item, dict):
+            if "moment" not in item:
+                raise ValueError(f"第 {i} 个力偶缺少字段 moment")
+            item = item["moment"]
+        couples.append(vector(item, f"第 {i} 个力偶矩"))
     return forces, origin, couples
 
 

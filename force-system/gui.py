@@ -559,7 +559,9 @@ class App:
         _geometry_points(geometry)
         reduce_system(forces, origin, couples)
         self.items = [{"name": f.name, "force": f} for f in forces]
-        self.items += [{"name": f"C{i+1}", "couple": c} for i, c in enumerate(couples)]
+        for i, (item, moment) in enumerate(zip(data.get("couples", []), couples), 1):
+            name = item.get("name", f"C{i}") if isinstance(item, dict) else f"C{i}"
+            self.items.append({"name": str(name), "couple": moment})
         self.geometry_data = geometry
         for variable, value in zip(self.origin, origin):
             variable.set(f"{value:.12g}")
@@ -579,10 +581,11 @@ class App:
 
     def save_case(self):
         try:
-            forces, origin, couples = self.get_inputs()
+            forces, origin, _ = self.get_inputs()
             data = {"origin": origin, "forces": [
                 {"name": f.name, "point": f.point, "components": f.components} for f in forces],
-                "couples": couples}
+                "couples": [{"name": row["name"], "moment": row["couple"]}
+                            for row in self.items if "couple" in row]}
             if self.geometry_data:
                 data["geometry"] = self.geometry_data
             path = filedialog.asksaveasfilename(defaultextension=".json",
